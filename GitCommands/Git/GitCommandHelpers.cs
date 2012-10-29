@@ -1213,14 +1213,23 @@ namespace GitCommands
 #if !MONO
             if (Settings.RunningOnWindows())
             {
-                // Send Ctrl+C
-                AttachConsole(process.Id);
-                SetConsoleCtrlHandler(IntPtr.Zero, true);
-                GenerateConsoleCtrlEvent(0, 0);
+                var module = new GitModule("");
+                var success = module.KillProcess(process.Id);
+                if (!success)
+                {
+                    // Send Ctrl+C
+                    AttachConsole(process.Id);
+                    SetConsoleCtrlHandler(IntPtr.Zero, true);
+                    GenerateConsoleCtrlEvent(0, 0);
+                }
                 if (!process.HasExited)
                     System.Threading.Thread.Sleep(500);
                 if (!process.HasExited)
                     process.Kill();
+            }
+            else
+            {
+                process.Kill();
             }
 #else
             process.Kill();

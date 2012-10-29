@@ -2767,6 +2767,42 @@ namespace GitCommands
                 return true;
             }
 
+            var psItems = GetPsItems();
+
+            var existsGitProcess = psItems.Any(item => item.Command.EndsWith("/git"));
+
+            return existsGitProcess;
+        }
+
+        public bool KillProcess(int pid)
+        {
+            var psItems = GetPsItems();
+
+            PsItem psItem = null;
+            if (Settings.RunningOnWindows())
+            {
+                psItem = psItems.Where(item => item.WinPid == pid).SingleOrDefault();
+            }
+            else
+            {
+                psItem = psItems.Where(item => item.Pid == pid).SingleOrDefault();
+            }
+
+            if (psItem != null)
+            {
+                var cmd = Path.Combine(Settings.GitBinDir, "kill");
+                var arguments = psItem.Pid.ToString();
+
+                var output = RunCmd(cmd, arguments);
+
+                return true;
+            }
+
+            return false;
+        }
+
+        private IList<PsItem> GetPsItems()
+        {
             // Get processes by "ps" command.
             var cmd = Path.Combine(Settings.GitBinDir, "ps");
             var arguments = "x";
@@ -2779,21 +2815,55 @@ namespace GitCommands
             var output = RunCmd(cmd, arguments);
             var lines = output.Split('\n');
             var headers = lines[0].Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+            var pidIndex = Array.IndexOf(headers, "PID");
+            var winPidIndex = Array.IndexOf(headers, "WINPID");
             var commandIndex = Array.IndexOf(headers, "COMMAND");
+
+            var list = new List<PsItem>();
+
             for (int i = 1; i < lines.Count(); i++)
             {
                 var columns = lines[i].Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                if (commandIndex < columns.Count())
+
+                if (columns.Count() == 0)
                 {
-                    var command = columns[commandIndex];
-                    if (command.EndsWith("/git"))
-                    {
-                        return true;
-                    }
+                    break;
+                }
+
+                if (columns[0] == "I")
+                {
+                    var listColumns = columns.ToList();
+                    listColumns.RemoveAt(0);
+                    columns = listColumns.ToArray();
+                }
+
+                var command = "";
+                if (commandIndex != -1)
+                {
+                    command = columns[commandIndex];
+                }
+                var pid = 0;
+                if (pidIndex != -1)
+                {
+                    pid = Convert.ToInt32(columns[pidIndex]);
+                }
+
+                var winPid = 0;
+                if (winPidIndex != -1)
+                {
+                    winPid = Convert.ToInt32(columns[winPidIndex]);
+                }
+
+                if (pid != 0)
+                {
+                    var psItem = new PsItem() { Pid = pid, WinPid = winPid, Command = command };
+
+                    list.Add(psItem);
                 }
             }
 
-            return false;
+            return list;
         }
 
         public static string ReEncodeFileName(string diffStr, int headerLines)
