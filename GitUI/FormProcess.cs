@@ -211,13 +211,6 @@ namespace GitUI
             DataReceived(sender, e);
         }
 
-        public void AppendOutputLine(string line)
-        {
-            OutputString.AppendLine(line);
-
-            AddMessageLine(line);
-        }
-
         public static bool IsOperationAborted(string dialogResult)
         {
             return dialogResult.Trim('\r', '\n') == "Aborted";

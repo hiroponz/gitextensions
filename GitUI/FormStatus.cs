@@ -85,6 +85,15 @@ namespace GitUI
             syncContext.Send(method, this);
         }
 
+        public void AppendOutputLine(string line)
+        {
+            lock (OutputString)
+            {
+                OutputString.AppendLine(line);
+            }
+            AddMessageLine(line);
+        }
+
         public void AppendMessageCrossThread(string text)
         {
             if (syncContext == SynchronizationContext.Current)
@@ -262,7 +271,7 @@ namespace GitUI
             try
             {
                 AbortCallback(this);
-                OutputString.Append(Environment.NewLine + "Aborted");
+                AppendOutputLine(Environment.NewLine + "Aborted");
                 Done(false);
                 DialogResult = DialogResult.Abort;
             }
